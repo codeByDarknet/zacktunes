@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#2a2a3e"/>
+  <circle cx="100" cy="100" r="60" fill="#3a3a5e" stroke="#5a5a8e" stroke-width="2"/>
+  <circle cx="100" cy="100" r="20" fill="#2a2a3e"/>
+  <text x="100" y="108" text-anchor="middle" fill="#8888aa" font-size="40">🎵</text>
+</svg>

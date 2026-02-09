@@ -31,10 +31,10 @@ class YouTubeUtils {
     
     if (icon && text) {
       if (this.isOnline) {
-        icon.textContent = '🟢';
+        icon.className = 'fas fa-circle text-success';
         text.textContent = 'En ligne';
       } else {
-        icon.textContent = '🔴';
+        icon.className = 'fas fa-circle text-danger';
         text.textContent = 'Hors ligne';
       }
     }

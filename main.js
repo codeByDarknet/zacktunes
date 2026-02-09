@@ -6,42 +6,89 @@ const os = require('os');
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
-const { spawn } = require('child_process');
-
-// Configurer ffmpeg avec le binaire bundlé
-const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+const { execFile } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
-ffmpeg.setFfmpegPath(ffmpegPath);
-
-// yt-dlp
-const YTDlpWrap = require('yt-dlp-wrap').default;
-let ytDlp = null;
 
 let mainWindow;
 let proxyServer;
 let proxyPort;
+let YTDLP_PATH;
+let FFMPEG_PATH;
 
 // Chemins
 const TUNESPOCKET_DIR = path.join(os.homedir(), 'Music', 'TunesPocket');
 const BIBLIOTHEQUE_PATH = path.join(TUNESPOCKET_DIR, 'bibliotheque.json');
 const IMAGES_DIR = path.join(TUNESPOCKET_DIR, 'images');
 const AUDIO_DIR = path.join(TUNESPOCKET_DIR, 'audio');
-const TEMP_DIR = path.join(os.tmpdir(), 'tunespocket-cache');
-const YTDLP_PATH = path.join(TEMP_DIR, process.platform === 'win32' ? 'yt-dlp.exe' : 'yt-dlp');
 
-// Télécharger yt-dlp si nécessaire
-async function ensureYtDlp() {
-  try {
-    if (!fsSync.existsSync(YTDLP_PATH)) {
-      console.log('Téléchargement de yt-dlp...');
-      await YTDlpWrap.downloadFromGithub(YTDLP_PATH);
-      console.log('yt-dlp téléchargé avec succès');
+// Exécuter yt-dlp avec child_process.execFile natif
+function runYtDlp(args) {
+  return new Promise((resolve, reject) => {
+    if (!YTDLP_PATH || !fsSync.existsSync(YTDLP_PATH)) {
+      return reject(new Error('yt-dlp introuvable'));
     }
-    ytDlp = new YTDlpWrap(YTDLP_PATH);
-    return true;
-  } catch (error) {
-    console.error('Erreur téléchargement yt-dlp:', error);
-    return false;
+
+    const timeout = setTimeout(() => {
+      reject(new Error('Timeout'));
+    }, 120000);
+
+    execFile(YTDLP_PATH, args, { 
+      maxBuffer: 10 * 1024 * 1024,
+      timeout: 120000,
+      windowsHide: true
+    }, (error, stdout, stderr) => {
+      clearTimeout(timeout);
+      if (error) {
+        console.error('yt-dlp stderr:', stderr);
+        return reject(error);
+      }
+      resolve(stdout);
+    });
+  });
+}
+
+// Trouver les binaires (yt-dlp et ffmpeg)
+function findBinaries() {
+  const searchDirs = [
+    process.resourcesPath,
+    path.join(__dirname, 'resources'),
+    path.join(path.dirname(process.execPath), 'resources')
+  ];
+
+  // Trouver yt-dlp
+  for (const dir of searchDirs) {
+    const p = path.join(dir, 'yt-dlp.exe');
+    if (fsSync.existsSync(p)) {
+      YTDLP_PATH = p;
+      console.log('yt-dlp trouvé:', p);
+      break;
+    }
+  }
+  if (!YTDLP_PATH) console.error('yt-dlp introuvable');
+
+  // Trouver ffmpeg
+  for (const dir of searchDirs) {
+    const p = path.join(dir, 'ffmpeg.exe');
+    if (fsSync.existsSync(p)) {
+      FFMPEG_PATH = p;
+      ffmpeg.setFfmpegPath(p);
+      console.log('ffmpeg trouvé:', p);
+      break;
+    }
+  }
+
+  // Fallback sur le module npm (mode dev)
+  if (!FFMPEG_PATH) {
+    try {
+      const npmPath = require('@ffmpeg-installer/ffmpeg').path;
+      if (fsSync.existsSync(npmPath)) {
+        FFMPEG_PATH = npmPath;
+        ffmpeg.setFfmpegPath(npmPath);
+        console.log('ffmpeg (npm):', npmPath);
+      }
+    } catch (e) {
+      console.error('ffmpeg introuvable');
+    }
   }
 }
 
@@ -57,9 +104,8 @@ function createProxyServer() {
       return;
     }
 
-    console.log('Proxy streaming avec conversion MP3...');
+    console.log('Proxy streaming...');
 
-    // Télécharger le stream via https et le piper vers ffmpeg
     const parsedUrl = new URL(targetUrl);
     const client = parsedUrl.protocol === 'https:' ? https : http;
 
@@ -72,7 +118,7 @@ function createProxyServer() {
       if (audioRes.statusCode !== 200) {
         console.error('Erreur HTTP:', audioRes.statusCode);
         res.writeHead(500);
-        res.end('Erreur de téléchargement');
+        res.end('Erreur');
         return;
       }
 
@@ -83,7 +129,6 @@ function createProxyServer() {
         'Cache-Control': 'no-cache'
       });
 
-      // Utiliser ffmpeg pour convertir le stream en MP3
       const ffmpegProcess = ffmpeg(audioRes)
         .inputFormat('mp4')
         .audioBitrate(128)
@@ -107,7 +152,7 @@ function createProxyServer() {
     });
 
     audioReq.on('error', (err) => {
-      console.error('Erreur requête audio:', err.message);
+      console.error('Erreur proxy:', err.message);
       if (!res.headersSent) res.writeHead(500);
       res.end('Erreur');
     });
@@ -123,7 +168,7 @@ function createProxyServer() {
 
 async function createWindow() {
   await ensureDirectories();
-  await ensureYtDlp();
+  findBinaries();
   createProxyServer();
 
   require('electron').Menu.setApplicationMenu(null);
@@ -144,6 +189,10 @@ async function createWindow() {
   mainWindow.loadFile('index.html');
   mainWindow.once('ready-to-show', () => mainWindow.show());
 
+  mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (input.key === 'F12') mainWindow.webContents.toggleDevTools();
+  });
+
   if (process.argv.includes('--dev')) {
     mainWindow.webContents.openDevTools();
   }
@@ -154,8 +203,7 @@ async function ensureDirectories() {
     await fs.mkdir(TUNESPOCKET_DIR, { recursive: true });
     await fs.mkdir(IMAGES_DIR, { recursive: true });
     await fs.mkdir(AUDIO_DIR, { recursive: true });
-    await fs.mkdir(TEMP_DIR, { recursive: true });
-    
+
     try {
       await fs.access(BIBLIOTHEQUE_PATH);
     } catch {
@@ -175,23 +223,19 @@ ipcMain.handle('get-paths', () => ({
   tunespocketDir: TUNESPOCKET_DIR,
   bibliothequeFile: BIBLIOTHEQUE_PATH,
   imagesDir: IMAGES_DIR,
-  audioDir: AUDIO_DIR,
-  tempDir: TEMP_DIR
+  audioDir: AUDIO_DIR
 }));
 
 ipcMain.handle('get-proxy-port', () => proxyPort);
-
 ipcMain.handle('show-error-dialog', (event, title, content) => dialog.showErrorBox(title, content));
 ipcMain.handle('show-message-dialog', (event, options) => dialog.showMessageBox(mainWindow, options));
 
-// Traduire du texte via Google Translate (API publique)
+// Traduire du texte
 ipcMain.handle('translate-text', async (event, text, targetLang) => {
   try {
-    console.log(`Traduction vers ${targetLang}...`);
-    
     const encodedText = encodeURIComponent(text);
     const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=${targetLang}&dt=t&q=${encodedText}`;
-    
+
     const response = await new Promise((resolve, reject) => {
       https.get(url, { timeout: 30000 }, (res) => {
         let data = '';
@@ -199,26 +243,19 @@ ipcMain.handle('translate-text', async (event, text, targetLang) => {
         res.on('end', () => resolve(data));
       }).on('error', reject);
     });
-    
+
     const json = JSON.parse(response);
-    const translated = json[0].map(item => item[0]).join('');
-    console.log('Traduction réussie');
-    return translated || text;
-    
+    return json[0].map(item => item[0]).join('') || text;
   } catch (error) {
-    console.error('Erreur traduction:', error.message);
     throw new Error('Impossible de traduire le texte');
   }
 });
 
-// Récupérer les paroles via API
+// Récupérer les paroles
 ipcMain.handle('get-lyrics', async (event, artist, title) => {
   try {
-    console.log(`Recherche paroles: ${artist} - ${title}`);
-    
-    // API lrclib.net avec paroles synchronisées
     const lrclibUrl = `https://lrclib.net/api/get?artist_name=${encodeURIComponent(artist)}&track_name=${encodeURIComponent(title)}`;
-    
+
     try {
       const response = await new Promise((resolve, reject) => {
         https.get(lrclibUrl, { timeout: 10000 }, (res) => {
@@ -227,22 +264,18 @@ ipcMain.handle('get-lyrics', async (event, artist, title) => {
           res.on('end', () => resolve(data));
         }).on('error', reject);
       });
-      
+
       const json = JSON.parse(response);
       if (json.syncedLyrics || json.plainLyrics) {
-        console.log('Paroles trouvées via lrclib.net');
         return {
           synced: json.syncedLyrics || null,
           plain: json.plainLyrics || json.syncedLyrics?.replace(/\[\d+:\d+\.\d+\]/g, '').trim()
         };
       }
-    } catch (err) {
-      console.log('lrclib.net échoué:', err.message);
-    }
-    
-    // API lyrics.ovh (fallback sans sync)
+    } catch (err) {}
+
     const ovhUrl = `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`;
-    
+
     try {
       const response = await new Promise((resolve, reject) => {
         https.get(ovhUrl, { timeout: 10000 }, (res) => {
@@ -251,49 +284,30 @@ ipcMain.handle('get-lyrics', async (event, artist, title) => {
           res.on('end', () => resolve(data));
         }).on('error', reject);
       });
-      
+
       const json = JSON.parse(response);
       if (json.lyrics) {
-        console.log('Paroles trouvées via lyrics.ovh');
         return { synced: null, plain: json.lyrics.trim() };
       }
-    } catch (err) {
-      console.log('lyrics.ovh échoué:', err.message);
-    }
-    
+    } catch (err) {}
+
     throw new Error('Paroles non trouvées');
   } catch (error) {
-    console.error('Erreur recherche paroles:', error.message);
     throw new Error('Paroles non disponibles');
   }
 });
 
-// Obtenir les infos d'une vidéo via yt-dlp
+// Obtenir les infos d'une vidéo via yt-dlp (child_process direct)
 ipcMain.handle('get-video-info', async (event, url) => {
-  if (!ytDlp) throw new Error('yt-dlp non disponible');
-  
   try {
-    // Nettoyer l'URL des paramètres de playlist
     const cleanUrl = url.split('&list=')[0].split('&index=')[0];
     console.log('Récupération infos pour:', cleanUrl);
-    
-    // Timeout de 60 secondes
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout - Vérifiez votre connexion')), 60000)
-    );
-    
-    // Utiliser execPromise avec --no-playlist pour être plus rapide
-    const resultPromise = ytDlp.execPromise([
-      cleanUrl,
-      '--no-playlist',
-      '-j'
-    ]);
-    
-    const result = await Promise.race([resultPromise, timeoutPromise]);
+
+    const result = await runYtDlp([cleanUrl, '--no-playlist', '-j']);
     const info = JSON.parse(result);
-    
+
     console.log('Infos obtenues:', info.title);
-    
+
     return {
       id: info.id,
       title: info.title,
@@ -302,89 +316,66 @@ ipcMain.handle('get-video-info', async (event, url) => {
       duration: info.duration
     };
   } catch (error) {
-    console.error('Erreur get-video-info:', error);
+    console.error('Erreur get-video-info:', error.message);
     throw new Error('Impossible de récupérer les informations');
   }
 });
 
 // Obtenir l'URL de streaming audio
 ipcMain.handle('get-audio-url', async (event, url) => {
-  if (!ytDlp) throw new Error('yt-dlp non disponible');
-  
   try {
-    // Nettoyer l'URL des paramètres de playlist
     const cleanUrl = url.split('&list=')[0].split('&index=')[0];
     console.log('Récupération URL audio pour:', cleanUrl);
-    
-    // Timeout de 60 secondes
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout')), 60000)
-    );
-    
-    const execPromise = ytDlp.execPromise([
+
+    const result = await runYtDlp([
       cleanUrl,
       '-f', 'bestaudio[ext=m4a]/bestaudio',
       '-g',
       '--no-playlist'
     ]);
-    
-    const result = await Promise.race([execPromise, timeoutPromise]);
+
     const audioUrl = result.trim();
-    
     console.log('URL audio obtenue');
     return `http://127.0.0.1:${proxyPort}/?url=${encodeURIComponent(audioUrl)}`;
   } catch (error) {
-    console.error('Erreur get-audio-url:', error);
+    console.error('Erreur get-audio-url:', error.message);
     throw new Error('Impossible d\'obtenir l\'URL audio');
   }
 });
 
 // Télécharger l'audio
 ipcMain.handle('download-audio', async (event, url, videoId, audioDir, title) => {
-  if (!ytDlp) throw new Error('yt-dlp non disponible');
-  
-  // Nettoyer l'URL
   const cleanUrl = url.split('&list=')[0].split('&index=')[0];
-  
-  // Créer un nom de fichier sécurisé basé sur le titre ou l'ID
-  const safeName = title 
+  const safeName = title
     ? title.replace(/[<>:"/\\|?*]/g, '').substring(0, 100).trim()
     : videoId;
   const outputPath = path.join(audioDir, `${safeName}.mp3`);
-  
-  // Vérifier si déjà téléchargé
+
   if (fsSync.existsSync(outputPath)) {
-    console.log('Fichier déjà téléchargé:', outputPath);
+    console.log('Déjà téléchargé:', outputPath);
     return outputPath;
   }
 
   try {
-    console.log('Téléchargement audio:', cleanUrl);
-    console.log('Destination:', outputPath);
-    
-    // Télécharger avec yt-dlp et convertir directement en MP3
-    await ytDlp.execPromise([
+    console.log('Téléchargement:', cleanUrl);
+
+    await runYtDlp([
       cleanUrl,
       '-x',
       '--audio-format', 'mp3',
       '--audio-quality', '192K',
-      '--ffmpeg-location', ffmpegPath,
+      '--ffmpeg-location', FFMPEG_PATH,
       '--no-playlist',
       '-o', outputPath
     ]);
 
-    // Vérifier si le fichier existe avec une extension différente
+    // Si le fichier n'a pas été créé directement en mp3, convertir
     if (!fsSync.existsSync(outputPath)) {
-      const possibleFiles = [
-        outputPath.replace('.mp3', '.webm'),
-        outputPath.replace('.mp3', '.m4a'),
-        outputPath.replace('.mp3', '.opus'),
-        outputPath.replace('.mp3', '.mp3.mp3')
-      ];
-
-      for (const file of possibleFiles) {
+      const possibleExts = ['.webm', '.m4a', '.opus', '.mp3.mp3'];
+      for (const ext of possibleExts) {
+        const file = outputPath.replace('.mp3', ext);
         if (fsSync.existsSync(file)) {
-          console.log('Conversion de:', file);
+          console.log('Conversion:', file);
           await new Promise((resolve, reject) => {
             ffmpeg(file)
               .audioBitrate(192)
@@ -408,8 +399,8 @@ ipcMain.handle('download-audio', async (event, url, videoId, audioDir, title) =>
     console.log('Téléchargement terminé:', outputPath);
     return outputPath;
   } catch (error) {
-    console.error('Erreur download-audio:', error);
-    throw new Error('Erreur lors du téléchargement: ' + error.message);
+    console.error('Erreur download:', error.message);
+    throw new Error('Erreur lors du téléchargement');
   }
 });
 

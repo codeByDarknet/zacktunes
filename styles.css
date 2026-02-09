@@ -147,6 +147,9 @@ body {
   box-shadow: var(--shadow-sm);
 }
 
+.text-success { color: var(--success); font-size: 10px; }
+.text-danger { color: var(--danger); font-size: 10px; }
+
 .header-right {
   display: flex;
   align-items: center;

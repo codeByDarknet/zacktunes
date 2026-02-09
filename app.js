@@ -881,3 +881,18 @@ document.getElementById('volumeBar')?.addEventListener('input', (e) => {
   const value = (e.target.value / e.target.max) * 100;
   e.target.style.setProperty('--progress', `${value}%`);
 });
+
+// Écouter le statut yt-dlp depuis le processus principal
+const { ipcRenderer } = require('electron');
+
+ipcRenderer.on('ytdlp-status', (event, status) => {
+  console.log('=== STATUT YT-DLP ===');
+  console.log('Disponible:', status.available);
+  console.log('Chemin:', status.path);
+  console.log('Fichier existe:', status.exists);
+  console.log('App packagée:', status.isPackaged);
+  
+  if (!status.available) {
+    alert(`⚠️ yt-dlp non disponible!\n\nChemin: ${status.path}\nFichier existe: ${status.exists}\n\nLe streaming et téléchargement ne fonctionneront pas.`);
+  }
+});

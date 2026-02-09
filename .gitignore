@@ -1,49 +1,24 @@
 # Dependencies
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Build outputs
+# Build output
 dist/
-build/
-out/
 
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# IDE files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Electron cache
+.cache/
 
 # Logs
-logs
 *.log
+npm-debug.log*
 
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
+# OS files
+.DS_Store
+Thumbs.db
 
-# Coverage directory used by tools like istanbul
-coverage/
+# IDE
+.vscode/
+.idea/
 
-# Electron
-app/
-release/
-
-# User data (ne pas versionner les données utilisateur)
-TunesPocket/
-
-# ytdl-core cache files
-*-player-script.js
+# Temp files
+*.tmp
+*.temp

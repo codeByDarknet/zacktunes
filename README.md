@@ -1,4 +1,4 @@
-# 🎵 TunesPocket
+# 🎵 ZackTunes
 
 Gestionnaire de musiques YouTube - Streaming et téléchargement pour Windows
 
@@ -30,7 +30,7 @@ npm run dev
 
 L'application crée automatiquement ses dossiers dans :
 ```
-C:/Users/[Utilisateur]/Music/TunesPocket/
+C:/Users/[Utilisateur]/Music/ZackTunes/
 │
 ├── 📄 bibliotheque.json          (Base de données)
 ├── 📁 images/                    (Thumbnails)
@@ -111,8 +111,8 @@ MIT License - Libre d'utilisation et de modification
 ```bash
 npm ci
 node download-ytdlp.js     # télécharge yt-dlp pour Linux dans resources/
-npm run build:linux        # crée dist/tunespocket_<version>_amd64.deb
-sudo apt install ./dist/tunespocket_1.0.0_amd64.deb   # installe aussi ffmpeg
+npm run build:linux        # crée dist/zacktunes_<version>_amd64.deb
+sudo apt install ./dist/zacktunes_1.0.0_amd64.deb   # installe aussi ffmpeg
 ```
 
-La bibliothèque est stockée dans le dossier Musique de l'utilisateur (`~/Musique/TunesPocket`).
+La bibliothèque est stockée dans le dossier Musique de l'utilisateur (`~/Musique/ZackTunes`).

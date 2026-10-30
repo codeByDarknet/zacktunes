@@ -1,4 +1,4 @@
-class TunesPocketApp {
+class ZackTunesApp {
   constructor() {
     this.currentMusic = null;
     this.currentPlaylist = [];
@@ -853,8 +853,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   try {
     // Ajouter des logs pour déboguer
-    console.log('Création de l\'instance TunesPocketApp...');
-    window.app = new TunesPocketApp();
+    console.log('Création de l\'instance ZackTunesApp...');
+    window.app = new ZackTunesApp();
     console.log('Application initialisée avec succès');
   } catch (error) {
     console.error('Erreur lors de l\'initialisation:', error);

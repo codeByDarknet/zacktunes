@@ -17,7 +17,7 @@ let FFMPEG_PATH;
 
 // Chemins
 // app.getPath('music') suit le dossier Musique localisé (ex. ~/Musique sous Ubuntu FR)
-const TUNESPOCKET_DIR = path.join(app.getPath('music'), 'TunesPocket');
+const TUNESPOCKET_DIR = path.join(app.getPath('music'), 'ZackTunes');
 const BIBLIOTHEQUE_PATH = path.join(TUNESPOCKET_DIR, 'bibliotheque.json');
 const IMAGES_DIR = path.join(TUNESPOCKET_DIR, 'images');
 const AUDIO_DIR = path.join(TUNESPOCKET_DIR, 'audio');

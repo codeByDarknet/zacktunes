@@ -1,5 +1,5 @@
 {
-  "name": "tunespocket",
+  "name": "zacktunes",
   "version": "1.0.0",
   "description": "Gestionnaire de musiques YouTube - Streaming et téléchargement",
   "main": "main.js",
@@ -33,8 +33,8 @@
     "sanitize-filename": "^1.6.3"
   },
   "build": {
-    "appId": "com.tunespocket.app",
-    "productName": "TunesPocket",
+    "appId": "com.zack.zacktunes",
+    "productName": "ZackTunes",
     "directories": {
       "output": "dist"
     },
@@ -87,7 +87,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "TunesPocket"
+      "shortcutName": "ZackTunes"
     },
     "linux": {
       "target": [
@@ -95,7 +95,7 @@
       ],
       "icon": "build/icons",
       "category": "AudioVideo",
-      "executableName": "tunespocket",
+      "executableName": "zacktunes",
       "synopsis": "Gestionnaire de musiques YouTube",
       "extraResources": [
         {
@@ -104,11 +104,11 @@
         }
       ],
       "desktop": {
-        "Name": "TunesPocket",
+        "Name": "ZackTunes",
         "GenericName": "Lecteur de musique",
         "Categories": "AudioVideo;Audio;Player;",
         "Keywords": "musique;youtube;mp3;audio;",
-        "StartupWMClass": "TunesPocket"
+        "StartupWMClass": "ZackTunes"
       }
     },
     "deb": {
@@ -126,5 +126,5 @@
       ]
     }
   },
-  "homepage": "https://github.com/codeByDarknet/tunespocket"
+  "homepage": "https://github.com/codeByDarknet/zacktunes"
 }

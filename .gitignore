@@ -22,3 +22,6 @@ Thumbs.db
 # Temp files
 *.tmp
 *.temp
+
+# Binaire yt-dlp Linux (téléchargé par `node download-ytdlp.js`)
+resources/yt-dlp

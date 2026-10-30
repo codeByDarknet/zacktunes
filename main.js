@@ -16,7 +16,8 @@ let YTDLP_PATH;
 let FFMPEG_PATH;
 
 // Chemins
-const TUNESPOCKET_DIR = path.join(os.homedir(), 'Music', 'TunesPocket');
+// app.getPath('music') suit le dossier Musique localisé (ex. ~/Musique sous Ubuntu FR)
+const TUNESPOCKET_DIR = path.join(app.getPath('music'), 'TunesPocket');
 const BIBLIOTHEQUE_PATH = path.join(TUNESPOCKET_DIR, 'bibliotheque.json');
 const IMAGES_DIR = path.join(TUNESPOCKET_DIR, 'images');
 const AUDIO_DIR = path.join(TUNESPOCKET_DIR, 'audio');
@@ -49,15 +50,22 @@ function runYtDlp(args) {
 
 // Trouver les binaires (yt-dlp et ffmpeg)
 function findBinaries() {
-  const searchDirs = [
+  const exe = process.platform === 'win32' ? '.exe' : '';
+  const resourceDirs = [
     process.resourcesPath,
     path.join(__dirname, 'resources'),
     path.join(path.dirname(process.execPath), 'resources')
   ];
+  // Sous Linux, on préfère le yt-dlp de l'utilisateur (tenu à jour) au binaire embarqué
+  const systemDirs = process.platform === 'win32' ? [] : [
+    path.join(os.homedir(), '.local', 'bin'),
+    '/usr/local/bin',
+    '/usr/bin'
+  ];
 
   // Trouver yt-dlp
-  for (const dir of searchDirs) {
-    const p = path.join(dir, 'yt-dlp.exe');
+  for (const dir of [...systemDirs, ...resourceDirs]) {
+    const p = path.join(dir, 'yt-dlp' + exe);
     if (fsSync.existsSync(p)) {
       YTDLP_PATH = p;
       console.log('yt-dlp trouvé:', p);
@@ -67,8 +75,8 @@ function findBinaries() {
   if (!YTDLP_PATH) console.error('yt-dlp introuvable');
 
   // Trouver ffmpeg
-  for (const dir of searchDirs) {
-    const p = path.join(dir, 'ffmpeg.exe');
+  for (const dir of [...resourceDirs, ...systemDirs]) {
+    const p = path.join(dir, 'ffmpeg' + exe);
     if (fsSync.existsSync(p)) {
       FFMPEG_PATH = p;
       ffmpeg.setFfmpegPath(p);
@@ -182,7 +190,7 @@ async function createWindow() {
       nodeIntegration: true,
       contextIsolation: false
     },
-    icon: path.join(__dirname, 'assets', 'default-cover1.jpg'),
+    icon: path.join(__dirname, 'assets', 'icon.png'),
     show: false
   });
 

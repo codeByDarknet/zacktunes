@@ -106,3 +106,13 @@ C:/Users/[Utilisateur]/Music/TunesPocket/
 ## 📄 Licence
 
 MIT License - Libre d'utilisation et de modification
+## Version Ubuntu / Linux
+
+```bash
+npm ci
+node download-ytdlp.js     # télécharge yt-dlp pour Linux dans resources/
+npm run build:linux        # crée dist/tunespocket_<version>_amd64.deb
+sudo apt install ./dist/tunespocket_1.0.0_amd64.deb   # installe aussi ffmpeg
+```
+
+La bibliothèque est stockée dans le dossier Musique de l'utilisateur (`~/Musique/TunesPocket`).

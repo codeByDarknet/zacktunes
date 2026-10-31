@@ -1,36 +1,77 @@
+// Télécharge les binaires embarqués dans l'application, selon la plateforme de build :
+//   Linux   : resources/yt-dlp                      (ffmpeg vient du système)
+//   Windows : resources/yt-dlp.exe                  (ffmpeg.exe est déjà dans le dépôt)
+//   macOS   : resources/mac/yt-dlp                  (binaire universel)
+//             resources/mac/{arm64,x64}/ffmpeg      (binaires statiques ffmpeg-static)
+// Usage : node download-ytdlp.js [linux|win|mac]
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
+const zlib = require('zlib');
 
-// Binaire autonome adapté à la plateforme de build (yt-dlp.exe sous Windows, yt-dlp_linux sous Linux)
-const isWin = process.platform === 'win32';
-const YTDLP_URL = `https://github.com/yt-dlp/yt-dlp/releases/latest/download/${isWin ? 'yt-dlp.exe' : 'yt-dlp_linux'}`;
-const YTDLP_PATH = path.join(__dirname, 'resources', isWin ? 'yt-dlp.exe' : 'yt-dlp');
+const target = process.argv[2]
+  || { win32: 'win', darwin: 'mac' }[process.platform]
+  || 'linux';
 
-console.log('Téléchargement de yt-dlp...');
+const RES = path.join(__dirname, 'resources');
+const YTDLP = 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/';
+// Version figée pour des builds reproductibles
+const FFMPEG = 'https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/';
+
+const jobs = {
+  linux: [{ url: YTDLP + 'yt-dlp_linux', dest: 'yt-dlp' }],
+  win: [{ url: YTDLP + 'yt-dlp.exe', dest: 'yt-dlp.exe' }],
+  mac: [
+    { url: YTDLP + 'yt-dlp_macos', dest: 'mac/yt-dlp' },
+    { url: FFMPEG + 'ffmpeg-darwin-arm64.gz', dest: 'mac/arm64/ffmpeg', gunzip: true },
+    { url: FFMPEG + 'ffmpeg-darwin-x64.gz', dest: 'mac/x64/ffmpeg', gunzip: true }
+  ]
+}[target];
+
+if (!jobs) {
+  console.error(`Plateforme inconnue : ${target} (attendu : linux, win ou mac)`);
+  process.exit(1);
+}
 
 // GitHub redirige "latest/download" vers le fichier réel : on suit les redirections
-function download(url, redirects = 0) {
-  https.get(url, (response) => {
-    if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location && redirects < 5) {
-      response.resume();
-      return download(response.headers.location, redirects + 1);
-    }
-    if (response.statusCode !== 200) {
-      console.error('Erreur: HTTP', response.statusCode);
-      process.exit(1);
-    }
-    const file = fs.createWriteStream(YTDLP_PATH, { mode: 0o755 });
-    response.pipe(file);
-    file.on('finish', () => {
-      file.close();
-      console.log('yt-dlp téléchargé avec succès dans resources/');
-    });
-  }).on('error', (err) => {
-    fs.unlink(YTDLP_PATH, () => {});
-    console.error('Erreur:', err.message);
-    process.exit(1);
+function get(url, redirects = 0) {
+  return new Promise((resolve, reject) => {
+    https.get(url, { headers: { 'User-Agent': 'zacktunes-build' } }, (res) => {
+      if ([301, 302, 303, 307, 308].includes(res.statusCode) && res.headers.location && redirects < 5) {
+        res.resume();
+        return resolve(get(new URL(res.headers.location, url).href, redirects + 1));
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`HTTP ${res.statusCode} pour ${url}`));
+      }
+      resolve(res);
+    }).on('error', reject);
   });
 }
 
-download(YTDLP_URL);
+async function download({ url, dest, gunzip }) {
+  const out = path.join(RES, dest);
+  const tmp = out + '.part';
+  fs.mkdirSync(path.dirname(out), { recursive: true });
+  console.log(`Téléchargement de ${path.basename(url)} -> resources/${dest}`);
+  const res = await get(url);
+  await new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(tmp, { mode: 0o755 });
+    const stream = gunzip ? res.pipe(zlib.createGunzip()) : res;
+    stream.on('error', reject);
+    file.on('error', reject);
+    file.on('finish', resolve);
+    stream.pipe(file);
+  });
+  fs.renameSync(tmp, out);
+  fs.chmodSync(out, 0o755);
+}
+
+(async () => {
+  for (const job of jobs) await download(job);
+  console.log(`Binaires prêts pour ${target}.`);
+})().catch((err) => {
+  console.error('Erreur :', err.message);
+  process.exit(1);
+});

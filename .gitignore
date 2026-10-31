@@ -25,3 +25,6 @@ Thumbs.db
 
 # Binaire yt-dlp Linux (téléchargé par `node download-ytdlp.js`)
 resources/yt-dlp
+# Binaires macOS (téléchargés par `node download-ytdlp.js mac`)
+resources/mac/
+resources/*.part

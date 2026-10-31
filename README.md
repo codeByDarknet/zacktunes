@@ -1,6 +1,8 @@
 # 🎵 ZackTunes
 
-Gestionnaire de musiques YouTube - Streaming et téléchargement pour Windows
+Gestionnaire de musiques YouTube - Streaming et téléchargement pour Windows, macOS et Linux.
+
+**Site et téléchargements : https://codebydarknet.github.io/zacktunes/**
 
 ## 🚀 Installation
 
@@ -106,13 +108,32 @@ C:/Users/[Utilisateur]/Music/ZackTunes/
 ## 📄 Licence
 
 MIT License - Libre d'utilisation et de modification
-## Version Ubuntu / Linux
+## Construire les paquets
+
+`download-ytdlp.js` récupère les binaires embarqués pour la plateforme visée
+(yt-dlp, et ffmpeg pour macOS ; sous Windows `ffmpeg.exe` est déjà dans `resources/`).
 
 ```bash
 npm ci
-node download-ytdlp.js     # télécharge yt-dlp pour Linux dans resources/
-npm run build:linux        # crée dist/zacktunes_<version>_amd64.deb
-sudo apt install ./dist/zacktunes_1.0.0_amd64.deb   # installe aussi ffmpeg
+npm run build:linux   # dist/zacktunes_amd64.deb + dist/ZackTunes-Linux-x86_64.AppImage
+npm run build:win     # dist/ZackTunes-Windows-Setup.exe (sous Windows)
+npm run build:mac     # dist/ZackTunes-macOS-{arm64,x64}.dmg (sous macOS, non signé)
+sudo apt install ./dist/zacktunes_amd64.deb   # installe aussi ffmpeg
 ```
 
+Au démarrage, l'application copie le yt-dlp embarqué dans son dossier de données et le
+met à jour (`yt-dlp -U`). Sous Linux et macOS, un yt-dlp installé par l'utilisateur
+(`~/.local/bin`, Homebrew, `/usr/bin`) reste prioritaire.
+
 La bibliothèque est stockée dans le dossier Musique de l'utilisateur (`~/Musique/ZackTunes`).
+
+## Publier une version
+
+Pousser un tag `v*` lance `.github/workflows/release.yml` : construction sur Windows, macOS
+et Linux, puis création d'une release GitHub avec les paquets et `SHA256SUMS.txt`.
+Le site (`website/`) est déployé sur GitHub Pages par `.github/workflows/pages.yml` et
+pointe toujours vers les fichiers de la dernière release.
+
+```bash
+git tag v1.0.0 && git push origin v1.0.0
+```

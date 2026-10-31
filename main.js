@@ -49,6 +49,9 @@ function runYtDlp(args) {
 }
 
 // Trouver les binaires (yt-dlp et ffmpeg)
+// Copie de yt-dlp tenue à jour par l'application (dossier inscriptible de l'utilisateur)
+const USER_BIN_DIR = path.join(app.getPath('userData'), 'bin');
+
 function findBinaries() {
   const exe = process.platform === 'win32' ? '.exe' : '';
   const resourceDirs = [
@@ -56,15 +59,16 @@ function findBinaries() {
     path.join(__dirname, 'resources'),
     path.join(path.dirname(process.execPath), 'resources')
   ];
-  // Sous Linux, on préfère le yt-dlp de l'utilisateur (tenu à jour) au binaire embarqué
+  // Sous Linux et macOS, on préfère le yt-dlp de l'utilisateur (tenu à jour) au binaire embarqué
   const systemDirs = process.platform === 'win32' ? [] : [
     path.join(os.homedir(), '.local', 'bin'),
+    '/opt/homebrew/bin',
     '/usr/local/bin',
     '/usr/bin'
   ];
 
   // Trouver yt-dlp
-  for (const dir of [...systemDirs, ...resourceDirs]) {
+  for (const dir of [...systemDirs, USER_BIN_DIR, ...resourceDirs]) {
     const p = path.join(dir, 'yt-dlp' + exe);
     if (fsSync.existsSync(p)) {
       YTDLP_PATH = p;
@@ -73,6 +77,7 @@ function findBinaries() {
     }
   }
   if (!YTDLP_PATH) console.error('yt-dlp introuvable');
+  else if (!systemDirs.includes(path.dirname(YTDLP_PATH))) updateYtDlp(exe);
 
   // Trouver ffmpeg
   for (const dir of [...resourceDirs, ...systemDirs]) {
@@ -97,6 +102,31 @@ function findBinaries() {
     } catch (e) {
       console.error('ffmpeg introuvable');
     }
+  }
+}
+
+// YouTube change souvent : le yt-dlp embarqué vieillit vite. On en garde une copie
+// dans le dossier de l'utilisateur et on la met à jour en arrière-plan (`yt-dlp -U`).
+async function updateYtDlp(exe) {
+  const userCopy = path.join(USER_BIN_DIR, 'yt-dlp' + exe);
+  try {
+    if (YTDLP_PATH !== userCopy) {
+      await fs.mkdir(USER_BIN_DIR, { recursive: true });
+      await fs.copyFile(YTDLP_PATH, userCopy);
+      await fs.chmod(userCopy, 0o755);
+    }
+    await new Promise((resolve, reject) => {
+      execFile(userCopy, ['-U'], { timeout: 120000, windowsHide: true }, (error, stdout) => {
+        if (error) return reject(error);
+        console.log('yt-dlp -U:', stdout.trim().split('\n').pop());
+        resolve();
+      });
+    });
+    YTDLP_PATH = userCopy;
+  } catch (error) {
+    // Hors ligne ou mise à jour impossible : on garde le binaire actuel
+    console.error('Mise à jour de yt-dlp impossible:', error.message);
+    if (fsSync.existsSync(userCopy) && YTDLP_PATH !== userCopy) YTDLP_PATH = userCopy;
   }
 }
 

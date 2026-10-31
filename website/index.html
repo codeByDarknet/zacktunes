@@ -102,24 +102,56 @@
     .nav-links a:not(.pill):hover { color: var(--text); }
     .nav .pill { padding: 10px 18px; font-size: 14px; }
 
-    /* Accroche */
-    .hero { padding: 168px 0 0; overflow: hidden; isolation: isolate; }
+    /* Accroche : carte plein écran qui se détache au défilement */
+    .hero { padding: 0; height: 100svh; min-height: 620px; }
+    .hero-card {
+      --p: 0;
+      position: relative; height: 100%; overflow: hidden; isolation: isolate;
+      background: radial-gradient(70% 90% at 72% 40%, #F08A2B 0%, #D35400 38%, #8E2A0B 72%, #2A0C04 100%);
+      border-radius: calc(var(--p) * 32px);
+      transform: scale(calc(1 - var(--p) * .07));
+      transform-origin: 50% 0;
+      will-change: transform;
+    }
+    .hero-photo {
+      position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2;
+      object-fit: cover; object-position: 62% 30%;
+      mix-blend-mode: luminosity; opacity: .92;
+      transform: scale(calc(1.04 + var(--p) * .06));
+    }
+    /* Assombrit la gauche et le bas pour garder le texte lisible */
+    .hero-card::after {
+      content: ""; position: absolute; inset: 0; z-index: -1;
+      background:
+        linear-gradient(90deg, rgba(20, 6, 2, .72) 0%, rgba(20, 6, 2, .35) 38%, transparent 62%),
+        linear-gradient(0deg, rgba(10, 3, 1, .78) 0%, transparent 42%);
+    }
+    .hero-inner { height: 100%; display: flex; flex-direction: column; justify-content: flex-end; padding: 120px 0 clamp(36px, 5vw, 56px); }
+    .hero-top { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: end; }
+    .hero h1 { font-size: clamp(46px, 8.2vw, 120px); font-weight: 400; max-width: 11ch; }
+    .hero h1 em { font-style: normal; color: #FFB066; }
+    .hero-side { display: grid; gap: 28px; text-align: right; font-size: 15px; color: rgba(255, 255, 255, .78); padding-bottom: 14px; }
+    .hero-side b { display: block; color: #fff; font-weight: 500; }
+    .hero-bottom { display: flex; align-items: center; justify-content: space-between; gap: 24px 40px; flex-wrap: wrap; margin-top: 40px; }
+    .hero .sub { color: rgba(255, 255, 255, .82); }
+    .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
+    .version { color: rgba(255, 255, 255, .62); font-size: 14px; margin-top: 14px; }
+    .hero .pill:hover { background: #0A0A0A; color: #fff; }
+    .hero .pill.ghost { box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .45); }
+    .hero .pill.ghost:hover { background: rgba(255, 255, 255, .12); }
+    .credit { position: absolute; right: 16px; bottom: 10px; font-size: 11px; color: rgba(255, 255, 255, .45); text-decoration: none; }
+    .credit:hover { color: #fff; }
+
+    /* Aperçu de l'application */
+    .preview { padding: clamp(72px, 9vw, 120px) 0 0; overflow: hidden; isolation: isolate; }
     .hero-glow {
       position: absolute; left: 50%; bottom: -12%; width: 140%; height: 70%; z-index: -1;
       transform: translateX(-50%);
       background: radial-gradient(50% 55% at 50% 60%, rgba(230, 126, 34, .95), rgba(211, 84, 0, .6) 40%, rgba(168, 50, 12, .25) 65%, transparent 80%);
       filter: blur(30px);
     }
-    .hero-top { display: grid; grid-template-columns: 1fr auto; gap: 40px; align-items: end; }
-    .hero h1 { font-size: clamp(46px, 8.2vw, 120px); font-weight: 400; max-width: 12ch; }
-    .hero h1 em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
-    .hero-side { display: grid; gap: 28px; text-align: right; font-size: 15px; color: var(--muted); padding-bottom: 14px; }
-    .hero-side b { display: block; color: var(--text); font-weight: 500; }
-    .hero-bottom { display: flex; align-items: center; justify-content: space-between; gap: 24px 40px; flex-wrap: wrap; margin-top: 40px; }
-    .hero-cta { display: flex; gap: 12px; flex-wrap: wrap; }
-    .version { color: var(--faint); font-size: 14px; margin-top: 14px; }
     .shot {
-      margin: clamp(56px, 7vw, 88px) auto 0; max-width: 1120px;
+      margin: 0 auto; max-width: 1120px;
       border-radius: 16px 16px 0 0; overflow: hidden; background: #fff;
       box-shadow: 0 -20px 120px -20px rgba(230, 126, 34, .55), 0 0 0 1px rgba(255, 255, 255, .14);
     }
@@ -254,6 +286,7 @@
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
       .js .reveal, .js .shot.reveal { opacity: 1; transform: none; clip-path: none; transition: none; }
+      .hero-card { --p: 0 !important; }
       .panel { transition: none; }
     }
 
@@ -268,7 +301,8 @@
     }
     @media (max-width: 680px) {
       .nav-links a:not(.pill) { display: none; }
-      .hero { padding-top: 124px; }
+      .hero-photo { object-position: 64% 20%; }
+      .hero-card::after { background: linear-gradient(0deg, rgba(10, 3, 1, .9) 0%, rgba(10, 3, 1, .55) 55%, transparent 80%); }
       .hero-top { grid-template-columns: 1fr; gap: 28px; }
       .hero-side { text-align: left; grid-template-columns: 1fr 1fr; gap: 16px; padding: 0; }
       .hero-cta, .hero-cta .pill { width: 100%; justify-content: center; }
@@ -304,25 +338,34 @@
 
   <main>
     <section class="hero">
+      <div class="hero-card" id="hero-card">
+        <img class="hero-photo" src="assets/listener.webp" srcset="assets/listener-1000.webp 1000w, assets/listener.webp 2000w" sizes="100vw" width="2000" height="1333" alt="" fetchpriority="high">
+        <div class="wrap hero-inner">
+          <div class="hero-top">
+            <h1 class="reveal">Vos sons YouTube, <em>partout</em> avec vous.</h1>
+            <div class="hero-side reveal" style="--d:.15s">
+              <p><b>Streaming ou MP3</b>écoutez, puis gardez</p>
+              <p><b>Gratuit, sans compte</b>Windows · macOS · Linux</p>
+            </div>
+          </div>
+          <div class="hero-bottom reveal" style="--d:.25s">
+            <p class="sub">Collez un lien, ZackTunes l'ajoute à votre bibliothèque. Lancez-le tout de suite en streaming ou téléchargez le MP3 pour l'écouter hors ligne.</p>
+            <div>
+              <div class="hero-cta">
+                <a class="pill" id="main-download" href="#telecharger"><span id="main-download-label">Télécharger gratuitement</span></a>
+                <a class="pill ghost" href="#fonctionnalites">Découvrir</a>
+              </div>
+              <p class="version" id="version">Gratuit · Windows, macOS, Linux</p>
+            </div>
+          </div>
+        </div>
+        <a class="credit" href="https://unsplash.com/photos/vCqPXLbaodI" target="_blank" rel="noopener">Photo : Alexander JT, Unsplash</a>
+      </div>
+    </section>
+
+    <section class="preview" aria-label="Aperçu de l'application">
       <div class="hero-glow" aria-hidden="true"></div>
       <div class="wrap">
-        <div class="hero-top">
-          <h1 class="reveal">Vos sons YouTube, <em>partout</em> avec vous.</h1>
-          <div class="hero-side reveal" style="--d:.15s">
-            <p><b>Streaming ou MP3</b>écoutez, puis gardez</p>
-            <p><b>Gratuit, sans compte</b>Windows · macOS · Linux</p>
-          </div>
-        </div>
-        <div class="hero-bottom reveal" style="--d:.25s">
-          <p class="sub">Collez un lien, ZackTunes l'ajoute à votre bibliothèque. Lancez-le tout de suite en streaming ou téléchargez le MP3 pour l'écouter hors ligne.</p>
-          <div>
-            <div class="hero-cta">
-              <a class="pill" id="main-download" href="#telecharger"><span id="main-download-label">Télécharger gratuitement</span></a>
-              <a class="pill ghost" href="#fonctionnalites">Découvrir</a>
-            </div>
-            <p class="version" id="version">Gratuit · Windows, macOS, Linux</p>
-          </div>
-        </div>
         <div class="shot reveal" style="--d:.35s">
           <div class="bar" aria-hidden="true"><i></i><i></i><i></i></div>
           <img src="assets/app.webp" srcset="assets/app-800.webp 800w, assets/app.webp 1600w" sizes="(max-width: 1152px) 100vw, 1120px" width="1600" height="1000" alt="Fenêtre de ZackTunes&nbsp;: la bibliothèque avec six titres, la recherche, le champ pour coller un lien YouTube et le lecteur en bas.">
@@ -551,6 +594,18 @@
     const onScroll = () => nav.classList.toggle('scrolled', scrollY > 40)
     addEventListener('scroll', onScroll, { passive: true })
     onScroll()
+
+    // L'accroche se détache en carte arrondie quand on défile
+    const heroCard = document.getElementById('hero-card')
+    if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      let ticking = false
+      const update = () => {
+        ticking = false
+        heroCard.style.setProperty('--p', Math.min(1, scrollY / (innerHeight * 0.55)).toFixed(3))
+      }
+      addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(update) } }, { passive: true })
+      update()
+    }
 
     // Apparitions au défilement
     const io = new IntersectionObserver((entries) => {
